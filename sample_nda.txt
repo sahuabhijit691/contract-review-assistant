@@ -1,0 +1,43 @@
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+This Non-Disclosure Agreement ("Agreement") is entered into as of the date of last
+signature below (the "Effective Date") by and between Acme Innovations Inc., a
+Delaware corporation ("Acme"), and Beta Supplier LLC, a California limited
+liability company ("Beta").
+
+1. PURPOSE
+The parties wish to explore a potential business relationship (the "Purpose") and
+in connection therewith may disclose to each other certain confidential technical
+and business information.
+
+2. CONFIDENTIAL INFORMATION
+"Confidential Information" means any information disclosed by either party to the
+other, whether orally, in writing, or by inspection of tangible objects, that is
+designated as confidential.
+
+3. DISCLOSURE OBLIGATIONS
+The receiving party shall use the same degree of care to protect the disclosing
+party's Confidential Information as it uses for its own confidential information,
+but in no event less than reasonable care.
+
+4. NON-SOLICITATION
+For a period of five (5) years following the Effective Date, neither party shall
+directly or indirectly solicit, hire, or attempt to hire any employee, contractor,
+or consultant of the other party, in any capacity, anywhere in the world, whether
+or not such solicitation is connected to the Purpose.
+
+5. GOVERNING LAW
+This Agreement shall be governed by the laws of the State of Delaware.
+
+6. MISCELLANEOUS
+This Agreement constitutes the entire agreement between the parties and supersedes
+all prior negotiations, understandings, and agreements.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the Effective
+Date.
+
+ACME INNOVATIONS INC.                    BETA SUPPLIER LLC
+
+By: _______________________              By: _______________________
+Name:                                     Name:
+Title:                                    Title:
