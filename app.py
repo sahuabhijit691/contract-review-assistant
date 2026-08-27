@@ -305,6 +305,14 @@ with st.sidebar:
             icon="⚠️",
         )
     st.divider()
+    st.subheader("Risk level key")
+    st.markdown(
+        "🔴 **High** -- significant issue, needs redlining\n\n"
+        "🟡 **Medium** -- worth a closer look\n\n"
+        "🟢 **Low** -- minor or standard variation\n\n"
+        "🔵 **Info** -- present and looks fine"
+    )
+    st.divider()
     st.caption(
         "Built as a legal-engineering portfolio project. "
         "See README for the evaluation methodology and known limitations."
@@ -396,6 +404,7 @@ if contract_text:
         st.info(result.get("overall_summary", "No summary returned."))
 
         st.subheader("Clause-by-Clause Findings")
+        st.caption("🔴 High risk &nbsp;·&nbsp; 🟡 Medium risk &nbsp;·&nbsp; 🟢 Low risk &nbsp;·&nbsp; 🔵 Info / looks fine")
         for finding in result.get("findings", []):
             risk = finding.get("risk_level", "info")
             icon = RISK_COLORS.get(risk, "⚪")
