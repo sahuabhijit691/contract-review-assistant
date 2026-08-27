@@ -9,6 +9,7 @@ Run locally:  streamlit run app.py
 
 import json
 import os
+import time
 
 from google import genai
 from google.genai import types
@@ -210,22 +211,30 @@ Contract text to review:
 
     last_error = None
     for model_name in candidate_models:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=user_message,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    max_output_tokens=4000,
-                    temperature=0.2,
-                ),
-            )
-            raw_text = response.text.strip()
-            raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-            return json.loads(raw_text)
-        except Exception as e:
-            last_error = e
-            continue
+        # Retry each candidate model a couple of times before moving on --
+        # 503 "high demand" errors are common and usually resolve within
+        # a few seconds, so a quick retry avoids surfacing a scary error
+        # for what is often a temporary blip.
+        for attempt in range(2):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=user_message,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        max_output_tokens=4000,
+                        temperature=0.2,
+                    ),
+                )
+                raw_text = response.text.strip()
+                raw_text = raw_text.replace("```json", "").replace("```", "").strip()
+                return json.loads(raw_text)
+            except Exception as e:
+                last_error = e
+                if "503" in str(e) or "UNAVAILABLE" in str(e):
+                    time.sleep(3)
+                    continue
+                break  # non-503 error: don't bother retrying this model
 
     # If every candidate model failed, surface the last real error
     raise last_error
@@ -355,7 +364,14 @@ if contract_text:
                     )
                     st.stop()
                 except Exception as e:
-                    st.error(f"Something went wrong: {e}")
+                    if "503" in str(e) or "UNAVAILABLE" in str(e):
+                        st.error(
+                            "Google's Gemini API is temporarily overloaded (this is on "
+                            "their end, not this app). Please wait a moment and click "
+                            "'Run Review' again."
+                        )
+                    else:
+                        st.error(f"Something went wrong: {e}")
                     st.stop()
 
             if using_shared_key:
