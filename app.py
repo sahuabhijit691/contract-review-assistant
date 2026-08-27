@@ -331,14 +331,19 @@ if "contract_text" not in st.session_state:
 if uploaded_file is not None:
     try:
         st.session_state.contract_text = extract_text(uploaded_file)
+        st.session_state.last_result = None  # clear stale results from a previous contract
     except Exception as e:
         st.error(f"Couldn't read that file: {e}")
 elif sample_button:
     sample_path = os.path.join(os.path.dirname(__file__), "sample_nda.txt")
     with open(sample_path, "r") as f:
         st.session_state.contract_text = f.read()
+    st.session_state.last_result = None  # clear stale results from a previous contract
 
 contract_text = st.session_state.contract_text
+
+if "last_result" not in st.session_state:
+    st.session_state.last_result = None
 
 if contract_text:
     with st.expander("View contract text"):
@@ -377,28 +382,38 @@ if contract_text:
             if using_shared_key:
                 st.session_state.reviews_used += 1
 
-            st.subheader("Summary")
-            st.info(result.get("overall_summary", "No summary returned."))
+            # Store the result and rerun so the sidebar's "reviews left"
+            # count updates immediately, rather than lagging one click behind.
+            st.session_state.last_result = result
+            st.rerun()
 
-            st.subheader("Clause-by-Clause Findings")
-            for finding in result.get("findings", []):
-                risk = finding.get("risk_level", "info")
-                icon = RISK_COLORS.get(risk, "⚪")
-                with st.expander(f"{icon} {finding.get('clause', 'Unknown clause')}  —  {risk.upper()}"):
-                    st.markdown(f"**Present in contract:** {finding.get('present', 'unknown')}")
-                    st.markdown(f"**Why it matters:** {finding.get('explanation', '')}")
-                    redline = finding.get("suggested_redline", "N/A")
-                    if redline and redline != "N/A":
-                        st.markdown("**Suggested redline:**")
-                        st.code(redline, language="text")
-                    else:
-                        st.markdown("**Suggested redline:** N/A")
+    # Render the most recent result, if any -- this runs on every page
+    # load/rerun, which is what lets the sidebar count and the results
+    # stay in sync immediately after clicking Run Review.
+    result = st.session_state.last_result
+    if result:
+        st.subheader("Summary")
+        st.info(result.get("overall_summary", "No summary returned."))
 
-            st.divider()
-            st.caption(
-                "⚠️ This is an AI-generated first-pass review for triage purposes only. "
-                "It is not legal advice and may contain errors or omissions. "
-                "A qualified lawyer should review the contract before relying on it."
-            )
+        st.subheader("Clause-by-Clause Findings")
+        for finding in result.get("findings", []):
+            risk = finding.get("risk_level", "info")
+            icon = RISK_COLORS.get(risk, "⚪")
+            with st.expander(f"{icon} {finding.get('clause', 'Unknown clause')}  —  {risk.upper()}"):
+                st.markdown(f"**Present in contract:** {finding.get('present', 'unknown')}")
+                st.markdown(f"**Why it matters:** {finding.get('explanation', '')}")
+                redline = finding.get("suggested_redline", "N/A")
+                if redline and redline != "N/A":
+                    st.markdown("**Suggested redline:**")
+                    st.code(redline, language="text")
+                else:
+                    st.markdown("**Suggested redline:** N/A")
+
+        st.divider()
+        st.caption(
+            "⚠️ This is an AI-generated first-pass review for triage purposes only. "
+            "It is not legal advice and may contain errors or omissions. "
+            "A qualified lawyer should review the contract before relying on it."
+        )
 else:
     st.info("Upload a .txt contract file, or click the sample button above to try it out.")
