@@ -245,12 +245,40 @@ st.caption(
 
 with st.sidebar:
     st.header("Setup")
-    api_key_input = st.text_input(
-        "Google Gemini API Key",
-        value=os.getenv("GEMINI_API_KEY", ""),
-        type="password",
-        help="Get a free key at aistudio.google.com/apikey. Stored only for this session.",
-    )
+
+    # On the deployed version, a shared key lives in Streamlit's Secrets so
+    # visitors don't need their own -- gated by a small per-session limit so
+    # the free-tier quota can't be drained by casual traffic. Locally, this
+    # secret won't exist, so it falls back to asking for a personal key.
+    try:
+        shared_key = st.secrets["GEMINI_API_KEY"]
+    except Exception:
+        shared_key = None
+
+    MAX_FREE_REVIEWS_PER_SESSION = 3
+    if "reviews_used" not in st.session_state:
+        st.session_state.reviews_used = 0
+
+    if shared_key:
+        remaining = MAX_FREE_REVIEWS_PER_SESSION - st.session_state.reviews_used
+        st.success(f"No API key needed -- {remaining} free review(s) left this session.")
+        own_key_input = st.text_input(
+            "Or use your own Gemini API key (unlimited)",
+            value="",
+            type="password",
+            help="Optional. Get a free key at aistudio.google.com/apikey.",
+        )
+        api_key_input = own_key_input if own_key_input else shared_key
+        using_shared_key = not own_key_input
+    else:
+        api_key_input = st.text_input(
+            "Google Gemini API Key",
+            value=os.getenv("GEMINI_API_KEY", ""),
+            type="password",
+            help="Get a free key at aistudio.google.com/apikey. Stored only for this session.",
+        )
+        using_shared_key = False
+
     st.divider()
     contract_type = st.selectbox(
         "Contract type",
@@ -310,6 +338,12 @@ if contract_text:
     if st.button("Run Review", type="primary"):
         if not api_key_input:
             st.error("Please enter your Google Gemini API key in the sidebar first.")
+        elif using_shared_key and st.session_state.reviews_used >= MAX_FREE_REVIEWS_PER_SESSION:
+            st.error(
+                f"You've used all {MAX_FREE_REVIEWS_PER_SESSION} free reviews for this "
+                "session. Paste your own free Gemini API key in the sidebar "
+                "(aistudio.google.com/apikey) to keep going with no limit."
+            )
         else:
             with st.spinner("Reviewing contract... this can take up to a minute for longer documents."):
                 try:
@@ -323,6 +357,9 @@ if contract_text:
                 except Exception as e:
                     st.error(f"Something went wrong: {e}")
                     st.stop()
+
+            if using_shared_key:
+                st.session_state.reviews_used += 1
 
             st.subheader("Summary")
             st.info(result.get("overall_summary", "No summary returned."))
