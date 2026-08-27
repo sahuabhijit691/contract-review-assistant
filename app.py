@@ -109,9 +109,21 @@ st.markdown(
         color: #F5F0E6 !important;
         border: 1px solid rgba(201, 168, 118, 0.4) !important;
     }
-    section[data-testid="stSidebar"] [data-baseweb="select"] > div {
-        background-color: rgba(255,255,255,0.06) !important;
+    /* Contract type dropdown -- target broadly and force full opacity,
+       since Streamlit/baseweb sometimes renders the selected value with
+       reduced opacity (looks "greyed out") independent of text color. */
+    section[data-testid="stSidebar"] [data-testid="stSelectbox"] div {
+        background-color: rgba(255,255,255,0.08) !important;
+        color: #F5F0E6 !important;
+        opacity: 1 !important;
         border-color: rgba(201, 168, 118, 0.4) !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stSelectbox"] span {
+        color: #F5F0E6 !important;
+        opacity: 1 !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stSelectbox"] svg {
+        fill: #F5F0E6 !important;
     }
 
     /* Primary button ("Run Review") -- deep forest green, reads as "go" */
@@ -252,11 +264,6 @@ st.markdown(
     /* Sidebar heading spacing */
     section[data-testid="stSidebar"] .block-container {
         padding-top: 2rem !important;
-    }
-
-    /* Subtle top accent bar across the whole app, like a bound cover edge */
-    div[data-testid="stAppViewContainer"] {
-        background-image: linear-gradient(180deg, rgba(169,129,75,0.06) 0%, rgba(169,129,75,0) 120px);
     }
 
     /* Selectbox (Contract type) in sidebar -- ensure selected value text
@@ -477,7 +484,12 @@ Contract text to review:
                 if "503" in str(e) or "UNAVAILABLE" in str(e):
                     time.sleep(3)
                     continue
-                break  # non-503 error: don't bother retrying this model
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    # Rate limit -- a short automatic wait then one retry
+                    # often succeeds once the per-minute quota window rolls over.
+                    time.sleep(15)
+                    continue
+                break  # other error: don't bother retrying this model
 
     # If every candidate model failed, surface the last real error
     raise last_error
@@ -490,7 +502,7 @@ Contract text to review:
 st.markdown(
     """
     <div style="font-family:'Inter',sans-serif; letter-spacing:0.14em; text-transform:uppercase;
-                font-size:0.72rem; color:#A9814B; font-weight:600; margin-bottom:0.15rem;">
+                font-size:0.72rem; color:#A9814B; font-weight:600; margin-top:1.25rem; margin-bottom:0.4rem;">
         Legal Engineering &nbsp;·&nbsp; First-Pass Review
     </div>
     """,
@@ -636,6 +648,14 @@ if contract_text:
                             "Google's Gemini API is temporarily overloaded (this is on "
                             "their end, not this app). Please wait a moment and click "
                             "'Run Review' again."
+                        )
+                    elif "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                        st.error(
+                            "The free-tier Gemini quota has been hit for the moment "
+                            "(this resets quickly, usually within a minute). Please "
+                            "wait ~30-60 seconds and click 'Run Review' again -- or "
+                            "paste your own free Gemini key in the sidebar to use a "
+                            "separate quota."
                         )
                     else:
                         st.error(f"Something went wrong: {e}")
