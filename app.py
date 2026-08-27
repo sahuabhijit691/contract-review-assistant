@@ -26,6 +26,249 @@ load_dotenv()
 
 st.set_page_config(page_title="AI Contract Review Assistant", page_icon="⚖️", layout="wide")
 
+# ---------------------------------------------------------------------------
+# VISUAL DESIGN -- a "counsel's letterhead" aesthetic: warm ivory paper,
+# deep navy for authority, aged brass for accent, a serif display face for
+# the letterhead-style header. Risk colors stay functionally the same
+# (red/amber/green/blue carry real meaning) but are muted to sit inside
+# the palette instead of reading as generic web alert colors.
+# ---------------------------------------------------------------------------
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+        --paper: #FAF8F3;
+        --paper-raised: #FFFFFF;
+        --navy: #1C2B45;
+        --navy-light: #2A3F5F;
+        --brass: #A9814B;
+        --brass-light: #C9A876;
+        --forest: #3F6B52;
+        --forest-dark: #345942;
+        --ink: #22262B;
+        --ink-muted: #6B7280;
+    }
+
+    /* Base canvas */
+    .stApp {
+        background-color: var(--paper);
+    }
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+        color: var(--ink);
+    }
+    /* Force readable ink text everywhere in the MAIN content area
+       specifically (not the sidebar, which is styled separately below).
+       This is a broad safety net: if the browser/Streamlit is in dark
+       mode, many components default to light text, which becomes
+       invisible against the white/ivory cards this design uses. Rather
+       than patching each component one at a time, force it here once. */
+    div[data-testid="stAppViewContainer"] > div:nth-child(1) * {
+        color: var(--ink);
+    }
+    div[data-testid="stAppViewContainer"] > div:nth-child(1) h1,
+    div[data-testid="stAppViewContainer"] > div:nth-child(1) h2,
+    div[data-testid="stAppViewContainer"] > div:nth-child(1) h3 {
+        color: var(--navy) !important;
+    }
+
+    /* Letterhead-style headings */
+    h1, h2, h3 {
+        font-family: 'Fraunces', serif !important;
+        color: var(--navy) !important;
+        font-weight: 500 !important;
+        letter-spacing: -0.01em;
+    }
+    h1 {
+        font-size: 2.1rem !important;
+        border-bottom: 1.5px solid var(--brass);
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.25rem !important;
+    }
+
+    /* Sidebar: deeper tone to read as the "desk" beside the "page" */
+    section[data-testid="stSidebar"] {
+        background-color: var(--navy);
+    }
+    section[data-testid="stSidebar"] * {
+        color: #EDEBE4 !important;
+    }
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3 {
+        color: #F5F0E6 !important;
+        font-family: 'Fraunces', serif !important;
+    }
+    section[data-testid="stSidebar"] hr {
+        border-color: rgba(201, 168, 118, 0.35) !important;
+    }
+    section[data-testid="stSidebar"] input {
+        background-color: rgba(255,255,255,0.06) !important;
+        color: #F5F0E6 !important;
+        border: 1px solid rgba(201, 168, 118, 0.4) !important;
+    }
+    section[data-testid="stSidebar"] [data-baseweb="select"] > div {
+        background-color: rgba(255,255,255,0.06) !important;
+        border-color: rgba(201, 168, 118, 0.4) !important;
+    }
+
+    /* Primary button ("Run Review") -- deep forest green, reads as "go" */
+    .stButton > button[kind="primary"] {
+        background-color: var(--forest) !important;
+        border: 1px solid var(--forest-dark) !important;
+        color: #FAF8F3 !important;
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 0.55rem 1.4rem;
+        transition: background-color 0.15s ease;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background-color: var(--forest-dark) !important;
+        border-color: var(--forest-dark) !important;
+    }
+
+    /* Secondary buttons -- brass-outlined, quieter */
+    .stButton > button:not([kind="primary"]) {
+        background-color: var(--paper-raised) !important;
+        border: 1px solid var(--brass-light) !important;
+        color: var(--navy) !important;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    .stButton > button:not([kind="primary"]):hover {
+        border-color: var(--brass) !important;
+        background-color: #FBF6EC !important;
+    }
+
+    /* Expanders (findings) styled as case-file cards */
+    div[data-testid="stExpander"] {
+        background-color: var(--paper-raised);
+        border: 1px solid rgba(169, 129, 75, 0.25);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(28, 43, 69, 0.05);
+    }
+    /* Expander BODY content (e.g. "View contract text", finding details) --
+       force visible ink color on everything inside, not just the header.
+       This covers the case where the browser/Streamlit is in dark mode
+       and body text would otherwise default to light-on-light against
+       the white card background set above. */
+    div[data-testid="stExpanderDetails"],
+    div[data-testid="stExpanderDetails"] * {
+        color: var(--ink) !important;
+        background-color: transparent;
+    }
+    div[data-testid="stExpanderDetails"] pre,
+    div[data-testid="stExpanderDetails"] code {
+        color: var(--ink) !important;
+        background-color: #F7F4EC !important;
+    }
+
+    /* Redline suggestions in a legal-pad monospace */
+    code, .stCodeBlock, pre {
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+
+    /* Alerts (info/success/warning/error) -- muted, paper-toned */
+    div[data-testid="stAlert"] {
+        border-radius: 8px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* File uploader as a document intake tray */
+    section[data-testid="stFileUploaderDropzone"] {
+        background-color: var(--paper-raised);
+        border: 1.5px dashed var(--brass-light);
+        border-radius: 10px;
+        padding: 0.5rem;
+    }
+    section[data-testid="stFileUploaderDropzone"] > div,
+    section[data-testid="stFileUploaderDropzone"] span,
+    section[data-testid="stFileUploaderDropzone"] small,
+    section[data-testid="stFileUploaderDropzone"] svg {
+        color: var(--ink) !important;
+        fill: var(--brass) !important;
+    }
+    /* "Browse files" button lives inside the dropzone and has its own
+       dark background by default -- style it explicitly so it can't
+       collide with the ink-colored text rule above (dark-on-dark). */
+    section[data-testid="stFileUploaderDropzone"] button {
+        background-color: var(--navy) !important;
+        color: #FAF8F3 !important;
+        border: 1px solid var(--navy) !important;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    section[data-testid="stFileUploaderDropzone"] button:hover {
+        background-color: var(--navy-light) !important;
+    }
+    section[data-testid="stFileUploaderDropzone"] button * {
+        color: #FAF8F3 !important;
+    }
+
+    /* Uploaded file entry (filename + size shown after upload) --
+       explicit background + text color so it can't inherit an
+       invisible combination from either the light or dark contexts. */
+    [data-testid="stFileUploaderFile"],
+    [data-testid="stFileUploaderFileName"] {
+        background-color: var(--paper-raised) !important;
+        color: var(--ink) !important;
+        border-radius: 6px;
+    }
+    [data-testid="stFileUploaderFile"] * {
+        color: var(--ink) !important;
+    }
+
+    /* Expander header ("View contract text", findings) -- force
+       visible text explicitly rather than relying on inheritance. */
+    div[data-testid="stExpander"] summary,
+    div[data-testid="stExpander"] summary * {
+        color: var(--navy) !important;
+        font-weight: 500;
+    }
+    div[data-testid="stExpander"] summary:hover {
+        color: var(--brass) !important;
+    }
+
+    /* Caption/eyebrow text */
+    .stCaption, [data-testid="stCaptionContainer"] {
+        color: var(--ink-muted) !important;
+    }
+
+    /* Main content column -- contained "page" card on the ivory canvas,
+       rather than content sitting flush against the browser edge. This
+       is the difference between "styled Streamlit" and "a branded page." */
+    div[data-testid="stAppViewContainer"] > div:nth-child(1) section.main {
+        padding-top: 2rem;
+    }
+    .block-container {
+        max-width: 900px;
+        padding-top: 2.5rem !important;
+        padding-bottom: 3rem !important;
+    }
+
+    /* Sidebar heading spacing */
+    section[data-testid="stSidebar"] .block-container {
+        padding-top: 2rem !important;
+    }
+
+    /* Subtle top accent bar across the whole app, like a bound cover edge */
+    div[data-testid="stAppViewContainer"] {
+        background-image: linear-gradient(180deg, rgba(169,129,75,0.06) 0%, rgba(169,129,75,0) 120px);
+    }
+
+    /* Selectbox (Contract type) in sidebar -- ensure selected value text
+       and dropdown arrow are visibly light against the navy background */
+    section[data-testid="stSidebar"] [data-baseweb="select"] * {
+        color: #F5F0E6 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # Each contract type has its own review checklist. This is what makes the
 # tool extensible rather than a single-purpose NDA demo -- adding a new
 # contract type is just adding a new entry here.
@@ -244,7 +487,16 @@ Contract text to review:
 # UI
 # ---------------------------------------------------------------------------
 
-st.title("⚖️ AI Contract Review Assistant")
+st.markdown(
+    """
+    <div style="font-family:'Inter',sans-serif; letter-spacing:0.14em; text-transform:uppercase;
+                font-size:0.72rem; color:#A9814B; font-weight:600; margin-bottom:0.15rem;">
+        Legal Engineering &nbsp;·&nbsp; First-Pass Review
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+st.title("⚖ Contract Review Assistant")
 st.caption(
     "Upload a contract and get an AI-drafted first-pass review: missing clauses, "
     "unusual language, and suggested redlines. Pick the contract type in the "
@@ -277,6 +529,7 @@ with st.sidebar:
             type="password",
             help="Optional. Get a free key at aistudio.google.com/apikey.",
         )
+        st.caption("Optional -- get a free key at aistudio.google.com/apikey")
         api_key_input = own_key_input if own_key_input else shared_key
         using_shared_key = not own_key_input
     else:
@@ -286,6 +539,7 @@ with st.sidebar:
             type="password",
             help="Get a free key at aistudio.google.com/apikey. Stored only for this session.",
         )
+        st.caption("Get a free key at aistudio.google.com/apikey -- stored only for this session.")
         using_shared_key = False
 
     st.divider()
